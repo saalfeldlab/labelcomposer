@@ -56,6 +56,7 @@ conda-forge = true
 detached = true
 name = "labelcomposer_lint"
 dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
+use_default_conda_env_path = false
 
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --non-interactive {args:src/labelcomposer tests}"
