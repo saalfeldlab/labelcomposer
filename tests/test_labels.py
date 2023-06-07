@@ -1,10 +1,9 @@
 from itertools import combinations
-from typing import Tuple, Union
 
 import pytest
 from typeguard import TypeCheckError
 
-from labelcomposer.label import AtomicLabel, AtomicLabelSet, Label, LabelCollection
+from labelcomposer.label import AtomicLabel, Label, LabelCollection
 
 
 class TestAtomicLabel:
@@ -19,6 +18,8 @@ class TestAtomicLabel:
     def test_type_errors(self):
         with pytest.raises(TypeCheckError):
             AtomicLabel(1, 1)
+        with pytest.raises(TypeCheckError):
+            AtomicLabel("A", "A")
 
     def test_equality(self):
         a1 = AtomicLabel("A", 1)
@@ -31,10 +32,6 @@ class TestAtomicLabel:
         assert b1 == b2
         assert b2 == b1
         assert hash(b1) == hash(b2)
-
-    def test_type_errors2(self):
-        with pytest.raises(TypeCheckError):
-            AtomicLabel("A", "A")
 
     def test_inequality(self):
         a = AtomicLabel("A", 1)
@@ -78,313 +75,20 @@ class TestAtomicLabel:
         assert repr(a) == "AtomicLabel A (id not set)"
         assert repr(b) == "AtomicLabel BLA (1)"
 
-    def test_add(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        c = AtomicLabel("C")
-        ab = AtomicLabelSet([a, b])
-        abc1 = ab + c
-        abc2 = c + ab
-        assert abc1 == AtomicLabelSet([a, b, c])
-        assert abc2 == abc1
-        ab2 = b + ab
-        assert ab2 == ab
-        ab_lbl = Label(ab, "AB")
-        abc1_lbl = ab_lbl + c
-        abc2_lbl = c + ab_lbl
-        assert abc1_lbl == Label(AtomicLabelSet([a, b, c]))
-        assert abc2_lbl == abc1_lbl
-        ab2_lbl = b + ab_lbl
-        ab2_lbl.name = "AB"
-        assert ab2_lbl == ab_lbl
-
-    def test_add_error(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        with pytest.raises(TypeError) as e:
-            a + b
-        assert "unsupported operand type(s) for +: 'AtomicLabel' and 'AtomicLabel'" in str(e.value)
-        with pytest.raises(TypeError) as e:
-            a + 1
-        assert "unsupported operand type(s) for +: 'AtomicLabel' and 'int'" in str(e.value)
-
-    def test_or_error(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        with pytest.raises(TypeError):
-            a | b
-        assert "unsupported operand type(s) for |: 'AtomicLabel' and 'AtomicLabel'"
-        with pytest.raises(TypeError):
-            a | 1
-        assert "unsupported operand type(s) for |: 'AtomicLabel' and 'int'"
-
-    def test_or(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        c = AtomicLabel("C")
-        ab = AtomicLabelSet([a, b])
-        abc1 = ab | c
-        abc2 = c | ab
-        assert abc1 == AtomicLabelSet([a, b, c])
-        assert abc2 == abc1
-        ab2 = b | ab
-        assert ab2 == ab
-        ab_lbl = Label(ab, "AB")
-        abc1_lbl = ab_lbl | c
-        abc2_lbl = c | ab_lbl
-        assert abc1_lbl == Label(AtomicLabelSet([a, b, c]))
-        assert abc2_lbl == abc1_lbl
-        ab2_lbl = b | ab_lbl
-        ab2_lbl.name = "AB"
-        assert ab2_lbl == ab_lbl
-
-    def test_and(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        c = AtomicLabel("C")
-        ab = AtomicLabelSet([a, b])
-        empty = c & ab
-        assert empty == AtomicLabelSet([])
-        b2 = b & ab
-        assert b2 == AtomicLabelSet([b])
-        ab_lbl = Label(ab, "AB")
-        empty1_lbl = ab_lbl & c
-        empty2_lbl = c & ab_lbl
-        assert empty1_lbl == Label(AtomicLabelSet([]))
-        assert empty2_lbl == empty1_lbl
-        b2_lbl = b & ab_lbl
-        assert b2_lbl == Label(b2)
-
-
-class TestAtomicLabelSet:
-    def test_basic_usage(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B", 2)
-        c = AtomicLabel("C")
-        d = AtomicLabel("D")
-        a1 = AtomicLabelSet([a])
-        assert a1.members == {a}
-        a2 = AtomicLabelSet((a,))
-        assert a2.members == {a}
-        a3 = AtomicLabelSet(
-            {
-                a,
-            }
-        )
-        assert a3.members == {a}
-        aa = AtomicLabelSet([a, a])
-        assert aa.members == {a}
-        ab = AtomicLabelSet([a, b])
-        assert ab.members == {a, b}
-        abc = AtomicLabelSet([a, b, c])
-        assert abc.members == {a, b, c}
-        abcd = AtomicLabelSet([a, b, c, d])
-        assert abcd.members == {a, b, c, d}
-
-    def test_empty_set(self):
-        empty = AtomicLabelSet([])
-        assert empty.members == set()
-
-    def test_type_errors(self):
-        a = AtomicLabel("A", 1)
-        with pytest.raises(TypeCheckError):
-            AtomicLabelSet(a)
-        # assert (
-        #    "Expected an iterable of 'AtomicLabel' instances, but got 'AtomicLabel'"
-        #    in str(e.value)
-        # )
-        a2 = AtomicLabelSet(
-            [
-                a,
-            ]
-        )
-        with pytest.raises(TypeCheckError):
-            AtomicLabelSet([4, 5])
-        with pytest.raises(TypeCheckError):
-            AtomicLabelSet([a2])
-        # assert (
-        #     "Expected an iterable of 'AtomicLabel' instances, but got list of {'AtomicLabelSet'}"
-        #     in str(e.value)
-        # )
-        with pytest.raises(TypeCheckError):
-            AtomicLabelSet([a2, a])
-        # assert "Expected an iterable of 'AtomicLabel' instances, but got list of {'AtomicLabel', 'AtomicLabelSet'}" in str(
-        #     e.value
-        # ) or "Expected an iterable of 'AtomicLabel' instances, but got list of {'AtomicLabelSet', 'AtomicLabel'}" in str(
-        #     e.value
-        # )
-
-    def test_equality(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B", 2)
-        c = AtomicLabel("C")
-        abc1 = AtomicLabelSet([a, b, c])
-        abc2 = AtomicLabelSet((c, b, a))
-        abc3 = AtomicLabelSet([a, a, b, c, c])
-        abc4 = AtomicLabelSet({a, b, b, c})
-        assert abc1 == abc2
-        assert abc2 == abc1
-        assert abc1 == abc3
-        assert abc3 == abc1
-        assert abc1 == abc4
-        assert abc4 == abc1
-        assert hash(abc1) == hash(abc2) == hash(abc3) == hash(abc4)
-
-    def test_inequality(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B", 2)
-        c = AtomicLabel("C")
-        abc = AtomicLabelSet([b, c, a])
-        ab = AtomicLabelSet([a, b])
-        assert abc != ab
-        assert ab != abc
-        assert hash(ab) != hash(abc)
-        assert abc != {a, b, c}
-
-    def test_add(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B")
-        a1 = AtomicLabelSet([a])
-        b1 = AtomicLabelSet([b])
-        ab = AtomicLabelSet([a, b])
-        assert ab == a1 + b1
-        assert ab == a1 + b
-        assert ab == a + b1
-        assert ab == ab + a
-
-    def test_or(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B")
-        a1 = AtomicLabelSet([a])
-        b1 = AtomicLabelSet([b])
-        ab = AtomicLabelSet([a, b])
-        assert ab == a1 | b1
-        assert ab == a1 | b
-        assert ab == ab | a
-
-    def test_add_error(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        ab = AtomicLabelSet([a, b])
-        with pytest.raises(TypeError) as e:
-            ab + {a}
-        assert "unsupported operand type(s) for +: 'AtomicLabelSet' and 'set'" in str(e.value)
-        with pytest.raises(TypeError) as e:
-            a + b
-        with pytest.raises(TypeError) as e:
-            {a} + ab
-        assert "unsupported operand type(s) for +: 'set' and 'AtomicLabelSet'" in str(e.value)
-
-    def test_or_error(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        ab = AtomicLabelSet([a, b])
-        with pytest.raises(TypeError) as e:
-            ab | {a}
-        assert "unsupported operand type(s) for |: 'AtomicLabelSet' and 'set'" in str(e.value)
-        with pytest.raises(TypeError) as e:
-            a | b
-
-    def test_sub(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B")
-        c = AtomicLabel("C")
-        abc = AtomicLabelSet([a, b, c])
-        ab1 = AtomicLabelSet([a, b])
-        c1 = AtomicLabelSet([c])
-        assert ab1 == abc - c
-        assert ab1 == abc - c1
-        assert c1 == abc - ab1
-
-    def test_sub_error(self):
-        a = AtomicLabel("A")
-        a1 = AtomicLabelSet([a])
-        with pytest.raises(TypeError) as e:
-            a1 - {a}
-        assert "unsupported operand type(s) for -: 'AtomicLabelSet' and 'set'" in str(e.value)
-
-    def test_and(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B")
-        c = AtomicLabel("C")
-        d = AtomicLabel("D", 2)
-        abcd = AtomicLabelSet([a, b, c, d])
-        ab = AtomicLabelSet([a, b])
-        c1 = AtomicLabelSet([c])
-        assert abcd & ab == ab
-        assert abcd & c == c1
-        assert abcd == abcd + ab + c1
-
-    def test_and_error(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("B")
-        ab = AtomicLabelSet(
-            [
-                a,
-            ]
-        )
-        with pytest.raises(TypeError):
-            ab & {b}
-        assert "unsupported operand type(s) for &: 'AtomicLabelSet' and 'set'"
-
-    def test_computable_labels(self):
-        aa = AtomicLabel("A", 1)
-        bb = AtomicLabel("B")
-        cc = AtomicLabel("C")
-        dd = AtomicLabel("D")
-        ee = AtomicLabel("E")
-        a = AtomicLabelSet([aa])
-        b = AtomicLabelSet([bb])
-        a_b_computable = a.get_computable_labels(b)
-        assert a_b_computable == {
-            AtomicLabelSet([aa, bb]),
-            AtomicLabelSet([]),
-            AtomicLabelSet([aa]),
-            AtomicLabelSet([bb]),
-        }
-        abcd = AtomicLabelSet([aa, bb, cc, dd])
-        cde = AtomicLabelSet([cc, dd, ee])
-        abcd_cde_computable = abcd.get_computable_labels(cde)
-        assert abcd_cde_computable == {
-            abcd,
-            cde,
-            AtomicLabelSet([aa, bb, cc, dd, ee]),
-            AtomicLabelSet([aa, bb, ee]),
-            AtomicLabelSet([ee]),
-            AtomicLabelSet([aa, bb]),
-            AtomicLabelSet([cc, dd]),
-        }
-        assert AtomicLabelSet([aa, bb, cc, dd]).get_computable_labels(abcd) == {abcd}
-
-    def test_repr(self):
-        a = AtomicLabel("A")
-        b = AtomicLabel("BBB", 1)
-        lbl = AtomicLabelSet([a, b])
-        lbl_repr = repr(lbl)
-        assert (
-            lbl_repr == "AtomicLabelSet{" + repr(a) + ", " + repr(b) + "}"
-            or lbl_repr == "AtomicLabelSet{" + repr(b) + ", " + repr(a) + "}"
-        )
-
 
 class TestLabel:
     def test_basic_usage(self):
         a = AtomicLabel("A")
         b = AtomicLabel("B")
-        ab = AtomicLabelSet([a, b])
-        myab1 = Label(ab)
-        assert myab1.annotations == ab
+        myab1 = Label([a, b])
+        assert myab1.included == {a, b}
         assert myab1.name is None
-        myab2 = Label([a, b], "AB")
-        assert myab2.annotations == ab
+        myab2 = Label((a, b), "AB")
+        assert myab2.included == {a, b}
         assert myab2.name == "AB"
-
-    def test_not_hashable(self):
-        a = AtomicLabel("A")
-        albl = Label([a])
-        with pytest.raises(TypeError) as e:
-            {albl}
-        assert "unhashable type" in str(e.value)
+        myab3 = Label(frozenset([a, b]), "ab")
+        assert myab3.included == {a, b}
+        assert myab3.name == "ab"
 
     def test_type_error(self):
         a = AtomicLabel("A")
@@ -392,130 +96,139 @@ class TestLabel:
             Label(a, "my_label")
         with pytest.raises(TypeCheckError):
             Label([a], a)
-        with pytest.raises(TypeCheckError):
-            Label(
-                [
-                    AtomicLabelSet([a]),
-                ]
-            )
-        with pytest.raises(TypeCheckError):
-            Label(AtomicLabelSet([a]), 5)
 
     def test_equality(self):
         a = AtomicLabel("A")
         b = AtomicLabel("B")
-        ab = AtomicLabelSet([a, b])
         ab1 = Label([a, b], "AB")
-        ab2 = Label(ab, "AB")
+        ab2 = Label((a, b), "AB")
         assert ab1 == ab2
         assert ab2 == ab1
+        assert hash(ab1) == hash(ab2)
 
     def test_inequality(self):
         a = AtomicLabel("A")
         b = AtomicLabel("B")
-        ab = AtomicLabelSet([a, b])
-        assert Label(ab, "AB") != Label(ab, "ab")
-        assert Label([a], "A") != Label(ab, "A")
-        assert Label([a], "A") != Label(ab, "AB")
+        assert Label([a, b], "AB") != Label([a, b], "ab")
+        assert hash(Label([a, b], "AB")) != hash(Label([a, b], "ab"))
+        assert Label([a], "A") != Label([a, b], "A")
+        assert hash(Label([a], "A")) != hash(Label([a, b], "A"))
+        assert Label([a], "A") != Label([a, b], "AB")
+        assert hash(Label([a], "A")) != hash(Label([a, b], "AB"))
 
     def test_name_setter(self):
         a = AtomicLabel("A")
         albl1 = Label([a])
         albl2 = Label([a], "A")
         assert albl1 != albl2
+        assert hash(albl1) != hash(albl2)
         albl1.name = "A"
         assert albl1 == albl2
+        assert hash(albl1) == hash(albl2)
         albl2.name = "differentA"
         assert albl1 != albl2
+        assert hash(albl1) != hash(albl2)
 
     def test_add(self):
         a = AtomicLabel("A")
         b = AtomicLabel("B")
         c = AtomicLabel("C")
+        d = AtomicLabel("D")
         ab = Label([a, b], "AB")
-        abc1 = Label([a, b, c], "ABC")
-        abc2 = ab + c
-        abc2.name = "ABC"
+        abc1 = ab + c
+        assert abc1 == frozenset([a, b, c])
+        assert Label(abc1) == Label([a, b, c])
+
+        abcd1 = ab + {c, d, d}
+        assert abcd1 == frozenset([a, b, c, d])
+        assert Label(abcd1) == Label([a, b, c, d])
+
+        cd = Label([c, d], "CD")
+        assert ab + cd == frozenset([a, b, c, d])
+        assert Label(abcd1, "ABCD") == Label(ab + cd, "ABCD")
+
+    def test_or(self):
+        a = AtomicLabel("A")
+        b = AtomicLabel("B")
+        c = AtomicLabel("C")
+        d = AtomicLabel("D")
+        ab = Label([a, b], "AB")
+        abc1 = ab | c
+        assert abc1 == frozenset([a, b, c])
+        assert Label(abc1) == Label([a, b, c])
+
+        abcd1 = ab | [c, d, d]
+        assert abcd1 == frozenset([a, b, c, d])
+        assert Label(abcd1) == Label([a, b, c, d])
+
+        cd = Label([c, d], "CD")
+        assert ab | cd == frozenset([a, b, c, d])
+        assert Label(abcd1, "ABCD") == Label(ab | cd, "ABCD")
+
+    def test_sub(self):
+        a = AtomicLabel("A")
+        b = AtomicLabel("B")
+        c = AtomicLabel("C")
+        d = AtomicLabel("D")
+        abcd = Label([a, b, c, d], "ABCD")
+        abc1 = abcd - d
+        abc2 = Label([a, b, c]) - d
+        assert abc1 == frozenset([a, b, c])
         assert abc1 == abc2
-        abc2_r = c + ab
-        abc2_r.name = "ABC"
-        assert abc2 == abc2_r
-        abc3 = ab + AtomicLabelSet([c])
-        abc3.name = "ABC"
-        assert abc1 == abc3
-        abc3_r = AtomicLabelSet([c]) + ab
-        abc3_r.name = "ABC"
-        assert abc3 == abc3_r
-        abc4 = ab + Label([c], "C")
-        abc4.name = "ABC"
-        assert abc1 == abc4
-        abc4_r = Label([c], "C") + ab
-        abc4_r.name = "ABC"
-        assert abc4 == abc4_r
-        assert abc4 == abc4_r
+
+        ab1 = abcd - (c, d, d)
+        assert ab1 == frozenset([a, b])
+        ab2 = abcd - Label([c, d])
+        assert ab1 == ab2
 
 
-class TestLabelSet:
+class TestLabelCollection:
     def test_basic_usage(self):
         a = AtomicLabel("A")
         b = AtomicLabel("B")
         c = AtomicLabel("C")
-        a_as = AtomicLabelSet(
-            [
-                a,
-            ]
-        )
-        b_as = AtomicLabelSet(
-            [
-                b,
-            ]
-        )
-        ac_as = AtomicLabelSet(
-            [
-                a,
-                c,
-            ]
-        )
-        a_lbl = Label(a_as, "newA")
-        b_lbl = Label(b_as, "B")
-        ac_lbl = Label(ac_as, "AC")
-        lblset1 = LabelCollection(
-            [
-                a_lbl,
-            ]
-        )
-        lblset2 = LabelCollection((a_lbl,))
-        LabelCollection([a_lbl, b_lbl, ac_lbl])
-        assert (
-            lblset1.get_labels()
-            == lblset2.get_labels()
-            == {
-                a_as,
-            }
-        )
-        assert lblset1.get_names() == lblset2.get_names() == {"newA"}
-        assert (
-            lblset1.get_members()
-            == lblset2.get_members()
-            == [
-                a_lbl,
-            ]
-        )
+        d = AtomicLabel("D")
+        hierarchy = LabelCollection([a, b, c, d])
+        a_lbl = Label([a], "newA")
+        b_lbl = Label([b], "B")
+        ac_lbl = Label([a, c], "AC")
+        hierarchy.add_label(a_lbl)
+        hierarchy.add_label(b_lbl)
+        hierarchy.add_label(ac_lbl)
+        assert hierarchy.get_atoms() == {a, b, c, d}
+        assert hierarchy.get_computable_atoms() == {a, b, c, d}
+        assert hierarchy.get_computable_sets() == set()
+        assert hierarchy.get_derived_labels() == {a_lbl, b_lbl, ac_lbl}
+        assert hierarchy.get_names() == ["AC", "B", "newA"]
+
+    def test_empty_like(self):
+        a = AtomicLabel("A")
+        b = AtomicLabel("B")
+        c = AtomicLabel("C")
+        d = AtomicLabel("D")
+        hierarchy = LabelCollection([a, b, c])
+        hierarchy.add_label(Label([a, b]))
+        hierarchy2 = LabelCollection.empty_like(hierarchy)
+        assert hierarchy2.get_atoms() == {a, b, c}
+        hierarchy.add_atom(d)
+        assert hierarchy2.get_atoms() == {a, b, c}
+        assert len(hierarchy2.get_derived_labels()) == 0
 
     def test_computable_labels_2classes(self):
         a = AtomicLabel("A", 1)
         b = AtomicLabel("B", 2)
         c = AtomicLabel("C", 3)
+        d = AtomicLabel("D", 4)
         class1 = Label([a, b], "AB")
         class2 = Label([b, c], "BC")
-        mylblset = LabelCollection([class1, class2])
-        my_list = [a, b, c]
-        all = []
-        for i in range(len(my_list) + 1):
-            all += list(combinations(my_list, i))
+        my_list = [a, b, c, d]
+        mylblset = LabelCollection(my_list, labels=[class1, class2])
 
-        for entry in all:
-            assert mylblset.can_compute(AtomicLabelSet(entry))
+        all_combos = []
+        for i in range(len(my_list) + 1):
+            all_combos += list(combinations(my_list, i))
+        for entry in all_combos:
+            assert mylblset.can_compute(set(entry))
 
     def test_computable_labels_3classes(self):
         a = AtomicLabel("A", 1)
@@ -524,44 +237,62 @@ class TestLabelSet:
         d = AtomicLabel("D", 4)
         e = AtomicLabel("E", 5)
         f = AtomicLabel("F", 6)
-        g = AtomicLabel("C", 7)
+        g = AtomicLabel("G", 7)
+        h = AtomicLabel("H", 8)
         class1 = Label([a, b, d, e], "ABDE")
         class2 = Label([b, c, e, f], "BCEF")
         class3 = Label([d, e, f, g], "DEFG")
-        mylblset = LabelCollection([class1, class2, class3])
-        my_list = [a, b, c, d, e, f, g]
-        all = []
+        my_list = [a, b, c, d, e, f, g, h]
+        mylblset = LabelCollection(my_list, labels=[class1, class2, class3])
+
+        all_combos = []
         for i in range(len(my_list) + 1):
-            all += list(combinations(my_list, i))
-        for entry in all:
-            assert mylblset.can_compute(AtomicLabelSet(entry))
+            all_combos += list(combinations(my_list, i))
+        for entry in all_combos:
+            assert mylblset.can_compute(set(entry))
 
     def test_computable_labels_4classes(self):
-        a = AtomicLabel("A", 1)
-        b = AtomicLabel("B", 2)
-        c = AtomicLabel("C", 3)
-        d = AtomicLabel("D", 4)
-        e = AtomicLabel("E", 5)
-        f = AtomicLabel("F", 6)
-        g = AtomicLabel("G", 7)
-        h = AtomicLabel("H", 8)
-        i = AtomicLabel("I", 9)
-        j = AtomicLabel("J", 10)
-        k = AtomicLabel("K", 11)
-        l = AtomicLabel("L", 12)
-        m = AtomicLabel("M", 13)
+        a_atom = AtomicLabel("A", 1)
+        b_atom = AtomicLabel("B", 2)
+        c_atom = AtomicLabel("C", 3)
+        d_atom = AtomicLabel("D", 4)
+        e_atom = AtomicLabel("E", 5)
+        f_atom = AtomicLabel("F", 6)
+        g_atom = AtomicLabel("G", 7)
+        h_atom = AtomicLabel("H", 8)
+        i_atom = AtomicLabel("I", 9)
+        j_atom = AtomicLabel("J", 10)
+        k_atom = AtomicLabel("K", 11)
+        l_atom = AtomicLabel("L", 12)
+        m_atom = AtomicLabel("M", 13)
+        n_atom = AtomicLabel("N", 14)
+        class1 = Label([a_atom, c_atom, d_atom, e_atom, g_atom, h_atom, i_atom], "CLASS1")
+        class2 = Label([b_atom, c_atom, d_atom, g_atom, h_atom, j_atom, k_atom], "CLASS2")
+        class3 = Label([d_atom, e_atom, f_atom, h_atom, i_atom, k_atom, l_atom], "CLASS3")
+        class4 = Label([g_atom, h_atom, i_atom, j_atom, k_atom, l_atom, m_atom], "CLASS4")
+        my_list = [
+            a_atom,
+            b_atom,
+            c_atom,
+            d_atom,
+            e_atom,
+            f_atom,
+            g_atom,
+            h_atom,
+            i_atom,
+            j_atom,
+            k_atom,
+            l_atom,
+            m_atom,
+            n_atom,
+        ]
+        mylblset = LabelCollection(my_list, labels=[class1, class2, class3, class4])
 
-        class1 = Label([a, c, d, e, g, h, i], "CLASS1")
-        class2 = Label([b, c, d, g, h, j, k], "CLASS2")
-        class3 = Label([d, e, f, h, i, k, l], "CLASS3")
-        class4 = Label([g, h, i, j, k, l, m], "CLASS4")
-        mylblset = LabelCollection([class1, class2, class3, class4])
-        my_list = [a, b, c, d, e, f, g, h, i, j, k, l, m]
-        all = []
+        all_combos = []
         for indx in range(len(my_list) + 1):
-            all += list(combinations(my_list, indx))
-        for entry in all:
-            assert mylblset.can_compute(AtomicLabelSet(entry))
+            all_combos += list(combinations(my_list, indx))
+        for entry in all_combos:
+            assert mylblset.can_compute(set(entry))
 
     def test_realistic(self):
         ecs = AtomicLabel("ECS", 1)
@@ -598,9 +329,9 @@ class TestLabelSet:
         dapp = AtomicLabel("Centrosome D App", 32)
         sdapp = AtomicLabel("Centrosome SD App", 33)
         ribo = AtomicLabel("Ribo", 34)
-        AtomicLabel("Cytosol", 35)
+        cyto = AtomicLabel("Cytosol", 35)
         mtin = AtomicLabel("MT in", 36)
-        acs = [
+        atoms = [
             ecs,
             pm,
             mitomem,
@@ -635,11 +366,12 @@ class TestLabelSet:
             dapp,
             sdapp,
             ribo,
-            # cyto,
+            cyto,
             mtin,
         ]
         lblset = LabelCollection(
-            [
+            atoms,
+            labels=[
                 Label(
                     [
                         ecs,
@@ -732,7 +464,6 @@ class TestLabelSet:
                 ),
                 Label([sdapp], "Centrosome SD App"),
                 Label([ribo], "Ribo"),
-            ]
+            ],
         )
-        for ac in acs:
-            assert lblset.can_compute(AtomicLabelSet([ac])), f"Label set should be able to compute {ac}"
+        assert lblset.can_compute_atoms()

@@ -1,5 +1,5 @@
 import itertools
-from typing import Dict, List, Optional, Sequence, Set, TypeVar, Union
+from typing import FrozenSet, Optional, Sequence, Set, TypeVar, Union
 
 from typeguard import CollectionCheckStrategy, check_type, typechecked
 
@@ -40,151 +40,32 @@ class AtomicLabel:
     def __repr__(self) -> str:
         return f"AtomicLabel {self!s}"
 
-    def __add__(self, other: "AnyCompoundLabelType") -> "AnyCompoundLabelType":
-        if check_type_bool(other, AnyCompoundLabelType):
-            return other + self
-        else:
-            msg = f"unsupported operand type(s) for +: 'AtomicLabel' and '{type(other).__name__}'"
-            raise TypeError(msg)
-
-    def __or__(self, other: "AnyCompoundLabelType") -> "AnyCompoundLabelType":
-        if check_type_bool(other, AnyCompoundLabelType):
-            return other | self
-        else:
-            msg = f"unsupported operand type(s) for |: 'AtomicLabel' and '{type(other).__name__}'"
-            raise TypeError(msg)
-
-    def __and__(self, other: "AnyCompoundLabelType") -> "AnyCompoundLabelType":
-        if check_type_bool(other, AnyCompoundLabelType):
-            return other & self
-        else:
-            msg = f"unsupported operand type(s) for &: 'AtomicLabel' and '{type(other).__name__}'"
-            raise TypeError(msg)
-
-
-class AtomicLabelSet:
-    @typechecked
-    def __init__(self, members: CollectionLike[AtomicLabel]):
-        # if not isinstance(members, Iterable):
-        #     raise TypeError(
-        #         f"Expected an iterable of 'AtomicLabel' instances, but got '{type(members).__name__}'"
-        #     )
-        # if not all(isinstance(mem, AtomicLabel) for mem in members):
-        #     raise TypeError(
-        #         f"Expected an iterable of 'AtomicLabel' instances, but got {type(members).__name__} of {set(type(mem).__name__ for mem in members)}"
-        #     )
-        # print(check_type_bool(members, CollectionLike[AtomicLabel]))
-        self.members = frozenset(members)
-
-    def __eq__(self, other: "AtomicLabelSet") -> bool:
-        if not isinstance(other, AtomicLabelSet):
-            return False
-        return self.members == other.members
-
-    def __hash__(self) -> int:
-        return hash(self.members)
-
-    def __add__(self, other: "AnyLabelType") -> "AnyCompoundLabelType":
-        if not check_type_bool(other, AnyLabelType):
-            msg = f"unsupported operand type(s) for +: 'AtomicLabelSet' and '{type(other).__name__}'"
-            raise TypeError(msg)
-        if isinstance(other, Label):
-            return other + self
-        if isinstance(other, AtomicLabel):
-            other = AtomicLabelSet({other})
-        return AtomicLabelSet(self.members.union(other.members))
-
-    def __sub__(self, other: "AnyLabelType") -> "AnyCompoundLabelType":
-        if not check_type_bool(other, AnyLabelType):
-            msg = f"unsupported operand type(s) for -: 'AtomicLabelSet' and '{type(other).__name__}'"
-            raise TypeError(msg)
-        if isinstance(other, Label):
-            return Label(self - other.annotations)
-        if isinstance(other, AtomicLabel):
-            other = AtomicLabelSet({other})
-        return AtomicLabelSet(self.members - other.members)
-
-    def __or__(self, other: "AnyLabelType") -> "AnyCompoundLabelType":
-        if not check_type_bool(other, AnyLabelType):
-            msg = f"unsupported operand type(s) for |: 'AtomicLabelSet' and '{type(other).__name__}'"
-            raise TypeError(msg)
-        else:
-            return self + other
-
-    def __and__(self, other: "AnyLabelType") -> "AnyCompoundLabelType":
-        if not check_type_bool(other, AnyLabelType):
-            msg = f"unsupported operand type(s) for &: 'AtomicLabelSet' and '{type(other).__name__}'"
-            raise TypeError(msg)
-        if isinstance(other, Label):
-            return other & self
-        if isinstance(other, AtomicLabel):
-            other = AtomicLabelSet({other})
-        return AtomicLabelSet(self.members & other.members)
-
-    @typechecked
-    def get_computable_labels(self, other: "AnyLabelType") -> Set["AtomicLabelSet"]:
-        if isinstance(other, AtomicLabel):
-            other = AtomicLabelSet({other})
-        if isinstance(other, Label):
-            other = other.annotations
-        if self == other:
-            return {self}
-        add = self + other
-        sub1 = self - other
-        sub2 = other - self
-        inters = other & self
-        disjoint = add - inters
-        return {self, other, add, sub1, sub2, inters, disjoint}
-
-    def __repr__(self) -> str:
-        return "AtomicLabelSet{" + ", ".join(repr(ann) for ann in self.members) + "}"
-
-    def __str__(self) -> str:
-        return "AtomicLabelSet{" + ", ".join(str(ann) for ann in self.members) + "}"
-
-    def __len__(self) -> int:
-        return len(self.members)
-
 
 class Label:
     @typechecked
     def __init__(
         self,
-        annotations: Union[AtomicLabelSet, CollectionLike[AtomicLabel]],
+        included: CollectionLike[AtomicLabel],
         name: Optional[StringLike] = None,
     ):
         self._name = None
         if name is not None:
             self.name = name
-        # if not (
-        #     isinstance(annotations, AtomicLabelSet)
-        #     or (
-        #         isinstance(annotations, Iterable)
-        #         and all(isinstance(lbl, AtomicLabel) for lbl in annotations)
-        #     )
-        # ):
-        #     if isinstance(annotations, Iterable):
-        #         got_type = f"{type(annotations).__name__} of {set(type(lbl).__name__ for lbl in annotations)}"
-        #     else:
-        #         got_type = f"'{type(annotations.__name__)}'"
-        #     raise TypeError(
-        #         f"Expected a AtomicLabelSet or an iterable of 'AtomicLabel' instances, but got {got_type}"
-        #     )
-        if isinstance(annotations, AtomicLabelSet):
-            self.annotations = annotations
-        else:
-            self.annotations = AtomicLabelSet(annotations)
+        self.included = frozenset(included)
 
     def __eq__(self, other: "Label") -> bool:
         if not isinstance(other, Label):
             return False
-        return self.name == other.name and self.annotations == other.annotations
+        return self.name == other.name and self.included == other.included
 
     def __str__(self) -> str:
-        return f"Label {self.name}: {self.annotations!s}"
+        return f"Label {self.name}: {self.included}"
 
     def __repr__(self) -> str:
-        return f"Label: name {self.name}, label: {self.annotations!r}"
+        return f"Label: name {self.name}, label: {self.included}"
+
+    def __hash__(self) -> int:
+        return hash((self.included, self.name))
 
     @property
     def name(self) -> Optional[str]:
@@ -197,142 +78,200 @@ class Label:
             name = name.decode()
         self._name = name
 
-    def __add__(self, other: "AnyLabelType") -> "Label":
-        if isinstance(other, (AtomicLabelSet, AtomicLabel)):
-            return Label(self.annotations + other)
+    def __or__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+        if isinstance(other, (AtomicLabel)):
+            return self.included | {other}
+        elif check_type_bool(other, CollectionLike[AtomicLabel]):
+            return self.included | set(other)
         elif isinstance(other, Label):
-            return Label(self.annotations + other.annotations)
+            return self.included | other.included
         else:
-            msg = f"unsupported operand type(s) for +: 'Label' and '{type(other).__name__}'"
-            raise TypeError(msg)
-
-    def __or__(self, other: "AnyLabelType") -> "Label":
-        if not check_type_bool(other, AnyLabelType):
             msg = f"unsupported operand type(s) for |: 'Label' and '{type(other).__name__}'"
             raise TypeError(msg)
-        return self + other
 
-    def __sub__(self, other: "AnyLabelType") -> "Label":
-        if isinstance(other, (AtomicLabelSet, AtomicLabel)):
-            return Label(self.annotations - other)
+    def __add__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+        if not check_type_bool(other, AnyLabelType):
+            msg = f"unsupported operand type(s) for +: 'Label' and '{type(other).__name__}'"
+            raise TypeError(msg)
+        return self | other
+
+    def __sub__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+        if isinstance(other, AtomicLabel):
+            return self.included - {other}
+        elif check_type_bool(other, CollectionLike[AtomicLabel]):
+            return self.included - set(other)
         elif isinstance(other, Label):
-            return Label(self.annotations - other.annotations)
+            return self.included - other.included
         else:
             msg = f"unsupported operand type(s) for -: 'Label' and '{type(other).__name__}'"
             raise TypeError(msg)
 
-    def __and__(self, other: "AnyLabelType") -> "Label":
-        if isinstance(other, (AtomicLabelSet, AtomicLabel)):
-            return Label(self.annotations & other)
+    def __and__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+        if isinstance(other, AtomicLabel):
+            return self.included - {other}
+        elif check_type_bool(CollectionLike[AtomicLabel]):
+            return self.included & set(other)
         elif isinstance(other, Label):
-            return Label(self.annotations & other.annotations)
+            return self.included & other.included
         else:
             msg = f"unsupported operand type(s) for &: 'Label' and '{type(other).__name__}"
             raise TypeError(msg)
 
     def __len__(self) -> int:
-        return len(self.annotations)
+        return len(self.included)
+
+
+def computable(set1: Set, set2: Set) -> Set[FrozenSet]:
+    add = frozenset(set1 | set2)
+    sub1 = frozenset(set1 - set2)
+    sub2 = frozenset(set2 - set1)
+    inters = frozenset(set1 & set2)
+    disjoint = frozenset(add - inters)
+    return {frozenset(set1), frozenset(set2), add, sub1, sub2, inters, disjoint}
 
 
 class LabelCollection:
     @typechecked
-    def __init__(self, labels: Sequence[Label]):
-        # if not isinstance(labels, Sequence) or not all(
-        #     isinstance(lbl, Label) for lbl in labels
-        # ):
-        #     if isinstance(labels, Sequence):
-        #         got_type = f"{type(labels).__name__} of {set(type(lbl).__name__ for lbl in labels)}"
-        #     else:
-        #         got_type = f"'{type(labels.__name__)}'"
-        #     raise TypeError(f"Expected sequence of 'Label', but got {got_type}")
-        self._labels: Set[AtomicLabelSet] = set()
-        self._names: Set[str] = set()
-        self._members: List[Label] = []
-        self._computable_labels: Set[AtomicLabelSet] = set()
-        base_annotations: Set[AtomicLabel] = set()
-        for lbl in labels:
-            base_annotations.update(lbl.annotations.members)
-        self._base_annotations: Dict[AtomicLabel, bool] = {ann: False for ann in base_annotations}
-        for lbl in labels:
-            if len(lbl) == 1:
-                self.mark_computable(next(iter(lbl.annotations.members)))
-        for lbl in labels:
-            self.add_new_label(lbl)
+    def __init__(self, atoms: CollectionLike[AtomicLabel], labels: Optional[CollectionLike[Label]] = None):
+        self._atoms: Set[AtomicLabel] = set()
+        self._derived_labels: Set[Label] = set()
+        self._computable_atoms: Set[AtomicLabel] = set()
+        self._computable_sets: Set[FrozenSet[AtomicLabel]] = set()
+        for atom in atoms:
+            self.add_atom(atom)
+        if labels is not None:
+            for lbl in labels:
+                self.add_label(lbl)
 
-    @typechecked
-    def mark_computable(self, annotation: AtomicLabel):
-        self._base_annotations[annotation] = True
-        after_new_base: Set[AtomicLabelSet] = set()
-        for ann in self._computable_labels:
-            after_new_base.update({AtomicLabelSet(ann.members - {annotation})})
-        self._computable_labels = after_new_base
+    @classmethod
+    def empty_like(cls, prototype):
+        return cls(prototype.get_atoms())
 
-    def extract_computable_base(self) -> List[AtomicLabel]:
-        return [ba for ba, comp in self._base_annotations.items() if comp is True]
+    def get_computable_atoms(self):
+        return self._computable_atoms
 
-    def _update_computable(self, new_label: Label):
-        new_members = new_label.annotations.members
-        lbl_minus_base = list(new_members - set(self.extract_computable_base()))
+    def get_computable_sets(self):
+        return self._computable_sets
 
-        if len(lbl_minus_base) == 1:
-            self.mark_computable(lbl_minus_base[0])
-        elif len(lbl_minus_base) > 1:
-            lbl_minus_base = AtomicLabelSet(lbl_minus_base)
-            self._computable_labels.update({lbl_minus_base})
-            new_computable = set()
-            for lbl in self._computable_labels:
-                new_computable.update(lbl.get_computable_labels(lbl_minus_base))
-            new_computable2 = set()
-            for lbl1, lbl2 in itertools.combinations(new_computable - self._computable_labels, r=2):
-                new_computable2.update(lbl1.get_computable_labels(lbl2))
-            self._computable_labels.update(new_computable, new_computable2)
-            for lbl in new_computable | new_computable2:
-                if len(lbl) == 1:
-                    self.mark_computable(next(iter(lbl.members)))
-
-    @typechecked
-    def add_new_label(self, new_label: Label):
-        if new_label.name is None:
-            msg = "Name of new label needs to be set."
-            raise ValueError(msg)
-
-        if new_label.annotations not in self._labels:
-            if new_label.name in self._names:
-                msg = f"Label with name {new_label.name} already contained in LabelCollection {self}"
-                raise ValueError(msg)
-            self._labels.update({new_label.annotations})
-            self._names.update({new_label.name})
-            self._members.append(new_label)
-            self._update_computable(new_label)
+    def get_derived_labels(self):
+        return self._derived_labels
 
     def __iter__(self) -> Label:
-        yield from self._members
+        yield from self._derived_labels
 
-    def get_members(self) -> List[Label]:
-        return self._members
+    def get_names(self):
+        return sorted([lbl.name for lbl in self._derived_labels])
 
-    def get_labels(self) -> Set[AtomicLabelSet]:
-        return self._labels
-
-    def get_names(self) -> Set[str]:
-        return self._names
+    def get_atoms(self):
+        return self._atoms
 
     @typechecked
-    def can_compute(self, test_label: Union["AnyCompoundLabelType", "LabelCollection"]):
+    def add_atom(self, atom: AtomicLabel):
+        self._atoms.add(atom)
+        if len(self._derived_labels) > 0:
+            self._reinit()
+
+    @typechecked
+    def add_label(self, label: Label):
+        self._add_to_derived_labels(label)
+
+    def _reinit(self):
+        previous_derived_labels = self._derived_labels
+        self._derived_labels = set()
+        self._computable_atoms = set()
+        self._computable_sets = set()
+        for label in previous_derived_labels:
+            self.add_label(label)
+
+    @typechecked()
+    def _add_to_derived_labels(self, label: Label):
+        if any(inc not in self._atoms for inc in label.included):
+            msg = f"{set(label.included) - self._atoms} not part of collection"
+            raise ValueError(msg)
+        self._derived_labels.add(label)
+        self._update_computable(label.included)
+        self._update_computable(frozenset(self._atoms - label.included))
+
+    @typechecked
+    def _add_to_computable_atoms(self, new_atom: AtomicLabel):
+        new_computable_sets: Set[frozenset[AtomicLabel]] = set()
+        new_atoms: Set[AtomicLabel] = set()
+        for atomset in self._computable_sets:
+            new_set = atomset - {
+                new_atom,
+            }
+            if len(new_set) > 1:
+                new_computable_sets.add(new_set)
+            elif len(new_set) == 1:
+                [atom] = new_set
+                new_atoms.add(atom)
+        self._computable_sets = new_computable_sets
+        self._computable_atoms.add(new_atom)
+        for atom in new_atoms:
+            self._add_to_computable_atoms(atom)
+
+    @typechecked
+    def _add_a_computable_set(self, added_set: FrozenSet[AtomicLabel]):
+        new_set = added_set - self._computable_atoms
+        if len(new_set) == 1:
+            [new_atom] = new_set
+            self._add_to_computable_atoms(new_atom)
+        elif len(new_set) > 1:
+            self._computable_sets.add(new_set)
+
+    @typechecked
+    def _update_computable(self, added_set: FrozenSet[AtomicLabel]):
+        # compute the part of the `added_set` that is non-trivial by ignoring
+        # all the atomic labels that are already computable
+        new_set = added_set - self._computable_atoms
+        if len(new_set) == 1:  # this is a single atom
+            [new_atom] = new_set
+            self._add_to_computable_atoms(new_atom)
+        elif len(new_set) > 1:
+            newly_computable_it1 = {
+                new_set,
+            }
+            for old_set in self._computable_sets:
+                newly_computable_it1.update(computable(new_set, old_set))
+            newly_computable_it2 = set()
+            for set1, set2 in itertools.combinations(newly_computable_it1 - self._computable_sets, r=2):
+                newly_computable_it2.update(computable(set1, set2))
+            for computable_set in newly_computable_it1 | newly_computable_it2:
+                self._add_a_computable_set(computable_set)
+        # don't do anything if set is empty
+
+    def can_compute_atoms(self) -> bool:
+        return self._atoms == self.get_computable_atoms()
+
+    @typechecked
+    def can_compute(self, test_label: Union["AnyLabelType", "LabelCollection"]):
         if isinstance(test_label, LabelCollection):
-            return all(self.can_compute(lbl) for lbl in test_label)
+            if test_label._atoms != self._atoms:
+                return False
+            else:
+                for lbl in test_label:
+                    if not self.can_compute(lbl):
+                        return False
+                return True
+        elif isinstance(test_label, AtomicLabel):
+            included_set = frozenset(
+                [
+                    test_label,
+                ]
+            )
         elif isinstance(test_label, Label):
-            test_label = test_label.annotations
-        test_annotations = test_label.members - set(self.extract_computable_base())
-        if len(test_annotations) == 0:
+            included_set = test_label.included
+        elif check_type_bool(test_label, CollectionLike[AtomicLabel]):
+            included_set = frozenset(test_label)
+        else:
+            msg = f"Unknown type of `test_label`: {type(test_label)}"
+            raise TypeError(msg)
+        included_set = included_set - self.get_computable_atoms()
+
+        if len(included_set) == 0:
             return True
         else:
-            return test_annotations.issubset(self._computable_labels)
+            return included_set in self.get_computable_sets()
 
 
-AnyLabelType = Union[AtomicLabel, AtomicLabelSet, Label]
-AnyCompoundLabelType = Union[AtomicLabelSet, Label]
-AnyLabelType = Union[AtomicLabel, AtomicLabelSet, Label]
-AnyCompoundLabelType = Union[AtomicLabelSet, Label]
-AnyCompoundLabelType = Union[AtomicLabelSet, Label]
-AnyCompoundLabelType = Union[AtomicLabelSet, Label]
+AnyLabelType = Union[AtomicLabel, Label, Set[AtomicLabel]]
