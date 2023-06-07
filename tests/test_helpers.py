@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-import pytest
 import typeguard
 
 from labelcomposer.helpers import check_type_bool
@@ -28,6 +27,4 @@ class TestTypecheck:
             List[int],
             collection_check_strategy=typeguard.CollectionCheckStrategy.ALL_ITEMS,
         )
-
-    def test_optional(self):
         assert not check_type_bool("A", Optional[int])
