@@ -1,4 +1,5 @@
 import itertools
+import warnings
 from typing import FrozenSet, Optional, Sequence, Set, TypeVar, Union
 
 from typeguard import CollectionCheckStrategy, check_type, typechecked
@@ -137,6 +138,7 @@ class LabelCollection:
         self._derived_labels: Set[Label] = set()
         self._computable_atoms: Set[AtomicLabel] = set()
         self._computable_sets: Set[FrozenSet[AtomicLabel]] = set()
+        self._warn_size = 100
         for atom in atoms:
             self.add_atom(atom)
         if labels is not None:
@@ -180,6 +182,7 @@ class LabelCollection:
         self._derived_labels = set()
         self._computable_atoms = set()
         self._computable_sets = set()
+        self._warn_size = 10
         for label in previous_derived_labels:
             self.add_label(label)
 
@@ -191,6 +194,13 @@ class LabelCollection:
         self._derived_labels.add(label)
         self._update_computable(label.included)
         self._update_computable(frozenset(self._atoms - label.included))
+
+    def _check_size(self):
+        size = len(self.get_computable_sets())
+        if size >= self._warn_size:
+            self._increase_warn_size()
+            msg = f"Your collection of computable sets is getting big. Proceed with caution. Current size: {size} Next warning at {self._warn_size}"
+            warnings.warn(msg)
 
     @typechecked
     def _add_to_computable_atoms(self, new_atom: AtomicLabel):
@@ -206,6 +216,7 @@ class LabelCollection:
                 [atom] = new_set
                 new_atoms.add(atom)
         self._computable_sets = new_computable_sets
+        self._check_size()
         self._computable_atoms.add(new_atom)
         for atom in new_atoms:
             self._add_to_computable_atoms(atom)
@@ -218,6 +229,10 @@ class LabelCollection:
             self._add_to_computable_atoms(new_atom)
         elif len(new_set) > 1:
             self._computable_sets.add(new_set)
+            self._check_size()
+
+    def _increase_warn_size(self):
+        self._warn_size = self._warn_size * 10
 
     @typechecked
     def _update_computable(self, added_set: FrozenSet[AtomicLabel]):
