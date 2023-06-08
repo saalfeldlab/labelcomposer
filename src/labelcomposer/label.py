@@ -67,6 +67,9 @@ class Label:
 
     def __hash__(self) -> int:
         return hash((self.included, self.name))
+    
+    def __iter__(self) -> AtomicLabel:
+        yield from self.included
 
     @property
     def name(self) -> Optional[str]:
