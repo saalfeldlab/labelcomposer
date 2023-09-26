@@ -59,6 +59,11 @@ class Label:
             return False
         return self.name == other.name and self.included == other.included
 
+    def match(self, other: "Label") -> bool:
+        if not isinstance(other, Label):
+            return False
+        return self.included == other.included
+
     def __str__(self) -> str:
         return f"Label {self.name}: {self.included}"
 
@@ -305,6 +310,12 @@ class LabelCollection:
             return True
         else:
             return included_set in self.get_computable_sets()
+
+    def contains_match(self, test_label: Label):
+        for lbl in self.get_derived_labels():
+            if lbl.match(test_label):
+                return True
+        return False
 
 
 AnyLabelType = Union[AtomicLabel, Label, Set[AtomicLabel]]
