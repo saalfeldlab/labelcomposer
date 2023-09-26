@@ -286,7 +286,8 @@ class TestLabelCollection:
             m_atom,
             n_atom,
         ]
-        mylblset = LabelCollection(my_list, labels=[class1, class2, class3, class4])
+        with pytest.warns(UserWarning):
+            mylblset = LabelCollection(my_list, labels=[class1, class2, class3, class4])
 
         all_combos = []
         for indx in range(len(my_list) + 1):
