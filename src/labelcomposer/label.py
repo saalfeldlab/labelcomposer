@@ -161,8 +161,18 @@ class LabelCollection:
     def get_derived_labels(self):
         return self._derived_labels
 
+    @typechecked
+    def get_label_by_name(self, name: str):
+        for lbl in self.get_derived_labels():
+            if lbl.name == name:
+                return lbl
+        msg = f"No Label with name {name} in this LabelCollection."
+        raise ValueError(msg)
+
     def __iter__(self) -> Label:
-        yield from self._derived_labels
+        names = self.get_names()
+        for name in names:
+            yield self.get_label_by_name(name)
 
     def get_names(self):
         return sorted([lbl.name for lbl in self._derived_labels])
