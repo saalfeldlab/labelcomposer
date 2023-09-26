@@ -39,26 +39,26 @@ command = "mamba"
 
 [tool.hatch.envs.test]
 template = "default"
-dependencies = ["coverage[toml]>=6.5", "pytest"]
+dependencies = ["coverage[toml]>=6.5", "pytest", "mypy>=1.0.0"]
 
 [tool.hatch.envs.test.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
 cov-report = ["- coverage combine", "coverage report"]
 cov = ["test-cov", "cov-report"]
+typing = "mypy --install-types --non-interactive {args:src/labelcomposer tests}"
 
 [tool.hatch.envs.lint]
 type = "conda"
 command = "mamba"
 detached = true
 name = "labelcomposer_lint"
-dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
+dependencies = ["black>=23.1.0", "ruff>=0.0.243"]
 
 [tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/labelcomposer tests}"
 style = ["ruff {args:.}", "black --check --diff {args:.}"]
 fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
-all = ["style", "typing"]
+all = ["style"]
 
 [tool.black]
 target-version = ["py37"]
