@@ -113,7 +113,7 @@ class Label:
     def __and__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
         if isinstance(other, AtomicLabel):
             return self.included - {other}
-        elif check_type_bool(CollectionLike[AtomicLabel]):
+        elif check_type_bool(other, CollectionLike[AtomicLabel]):
             return self.included & set(other)
         elif isinstance(other, Label):
             return self.included & other.included
