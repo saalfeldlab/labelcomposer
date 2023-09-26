@@ -1,32 +1,27 @@
 import itertools
 import warnings
-from typing import FrozenSet, Optional, Sequence, Set, TypeVar, Union
+from typing import FrozenSet, Iterator, Optional, Sequence, Set, TypeVar, Union
 
 from typeguard import CollectionCheckStrategy, check_type, typechecked
 
-from labelcomposer.helpers import check_type_bool
+from labelcomposer.helpers import StringLike, check_type_bool, convert_to_str
 
 T = TypeVar("T")
-CollectionLike = Union[Sequence[T], Set[T]]
-StringLike = Union[str, bytes, bytearray]
-
+AnySet = Union[FrozenSet[T], Set[T]]
+CollectionLike = Union[Sequence[T], AnySet[T]]
 check_all = CollectionCheckStrategy.ALL_ITEMS
 
 
 class AtomicLabel:
     @typechecked
     def __init__(self, name: StringLike, index: Union[None, int] = None):
-        # if not isinstance(name, str):
-        # raise TypeError(f"Expected 'str', but got '{type(name).__name__}'")
-        # if not (isinstance(index, int) or index is None):
-        # raise TypeError(f"Expected 'int', but got '{type(index).__name__}'")
-        self.name = name
+        self.name: str = convert_to_str(name)
         self.index = index
 
     def __hash__(self) -> int:
         return hash((self.name, self.index))
 
-    def __eq__(self, other: "AtomicLabel") -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, AtomicLabel):
             return False
         return self.name == other.name and self.index == other.index
@@ -49,12 +44,10 @@ class Label:
         included: CollectionLike[AtomicLabel],
         name: Optional[StringLike] = None,
     ):
-        self._name = None
-        if name is not None:
-            self.name = name
+        self.name: Optional[str] = name
         self.included = frozenset(included)
 
-    def __eq__(self, other: "Label") -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Label):
             return False
         return self.name == other.name and self.included == other.included
@@ -73,7 +66,7 @@ class Label:
     def __hash__(self) -> int:
         return hash((self.included, self.name))
 
-    def __iter__(self) -> AtomicLabel:
+    def __iter__(self) -> Iterator[AtomicLabel]:
         yield from self.included
 
     @property
@@ -81,13 +74,13 @@ class Label:
         return self._name
 
     @name.setter
-    def name(self, name: StringLike) -> str:
-        check_type(name, StringLike)
-        if name is not None and not isinstance(name, str):
-            name = name.decode()
+    def name(self, name: Optional[StringLike]) -> None:
+        check_type(name, Optional[StringLike])
+        if name is not None:
+            name = convert_to_str(name)
         self._name = name
 
-    def __or__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+    def __or__(self, other: "AnyLabelType") -> FrozenSet[AtomicLabel]:
         if isinstance(other, (AtomicLabel)):
             return self.included | {other}
         elif check_type_bool(other, CollectionLike[AtomicLabel]):
@@ -98,13 +91,13 @@ class Label:
             msg = f"unsupported operand type(s) for |: 'Label' and '{type(other).__name__}'"
             raise TypeError(msg)
 
-    def __add__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+    def __add__(self, other: "AnyLabelType") -> FrozenSet[AtomicLabel]:
         if not check_type_bool(other, AnyLabelType):
             msg = f"unsupported operand type(s) for +: 'Label' and '{type(other).__name__}'"
             raise TypeError(msg)
         return self | other
 
-    def __sub__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+    def __sub__(self, other: "AnyLabelType") -> FrozenSet[AtomicLabel]:
         if isinstance(other, AtomicLabel):
             return self.included - {other}
         elif check_type_bool(other, CollectionLike[AtomicLabel]):
@@ -115,7 +108,7 @@ class Label:
             msg = f"unsupported operand type(s) for -: 'Label' and '{type(other).__name__}'"
             raise TypeError(msg)
 
-    def __and__(self, other: "AnyLabelType") -> Set[AtomicLabel]:
+    def __and__(self, other: "AnyLabelType") -> FrozenSet[AtomicLabel]:
         if isinstance(other, AtomicLabel):
             return self.included - {other}
         elif check_type_bool(other, CollectionLike[AtomicLabel]):
@@ -130,7 +123,7 @@ class Label:
         return len(self.included)
 
 
-def computable(set1: Set, set2: Set) -> Set[FrozenSet]:
+def computable(set1: AnySet, set2: AnySet) -> Set[FrozenSet]:
     add = frozenset(set1 | set2)
     sub1 = frozenset(set1 - set2)
     sub2 = frozenset(set2 - set1)
@@ -174,7 +167,7 @@ class LabelCollection:
         msg = f"No Label with name {name} in this LabelCollection."
         raise ValueError(msg)
 
-    def __iter__(self) -> Label:
+    def __iter__(self) -> Iterator[Label]:
         names = self.get_names()
         for name in names:
             yield self.get_label_by_name(name)
@@ -227,7 +220,7 @@ class LabelCollection:
 
     @typechecked
     def _add_to_computable_atoms(self, new_atom: AtomicLabel):
-        new_computable_sets: Set[frozenset[AtomicLabel]] = set()
+        new_computable_sets: Set[FrozenSet[AtomicLabel]] = set()
         new_atoms: Set[AtomicLabel] = set()
         for atomset in self._computable_sets:
             new_set = atomset - {
