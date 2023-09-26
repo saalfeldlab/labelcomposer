@@ -67,7 +67,7 @@ class Label:
 
     def __hash__(self) -> int:
         return hash((self.included, self.name))
-    
+
     def __iter__(self) -> AtomicLabel:
         yield from self.included
 
@@ -202,8 +202,13 @@ class LabelCollection:
         size = len(self.get_computable_sets())
         if size >= self._warn_size:
             self._increase_warn_size()
-            msg = f"Your collection of computable sets is getting big. Proceed with caution. Current size: {size} Next warning at {self._warn_size}"
-            warnings.warn(msg)
+            msg = (
+                f"Your collection of computable sets is getting big. "
+                f"Proceed with caution. "
+                f"Current size: {size} "
+                f"Next warning at {self._warn_size}"
+            )
+            warnings.warn(msg, stacklevel=1)
 
     @typechecked
     def _add_to_computable_atoms(self, new_atom: AtomicLabel):

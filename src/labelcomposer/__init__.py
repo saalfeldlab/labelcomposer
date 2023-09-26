@@ -2,3 +2,5 @@
 #
 # SPDX-License-Identifier: MIT
 from labelcomposer.label import AtomicLabel, Label, LabelCollection
+
+__all__ = ["AtomicLabel", "Label", "LabelCollection"]
