@@ -7,13 +7,15 @@ name = "labelcomposer"
 dynamic = ["version"]
 description = 'A small toolkit to design new label hierarchies composed from fundamental user annotation classes'
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 license = "MIT"
 keywords = []
 authors = [{ name = "Larissa Heinrich", email = "heinrichl@janelia.hhmi.org" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: Implementation :: CPython",
@@ -31,7 +33,7 @@ path = "src/labelcomposer/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = []
-python = "3.11"
+python = "3.8"
 type = "conda"
 command = "mamba"
 
